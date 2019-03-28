@@ -2,7 +2,7 @@
 
 struct FuncBox<'a> {
     func: Box<FnMut() -> ()>,
-    name: &'a str
+    handle: &'a str
 }
 
 struct EventLoop<'a> {
@@ -18,12 +18,12 @@ impl<'a> EventLoop<'a> {
         }
     }
 
-    fn push(&mut self, func: Box<FnMut() -> ()>, name: &'a str) {
-        self.funcs.push(FuncBox{ func, name });
+    fn push(&mut self, func: Box<FnMut() -> ()>, handle: &'a str) {
+        self.funcs.push(FuncBox{ func, handle });
     }
 
     fn next(&mut self) -> bool {
-        println!("{}", self.funcs[self.cur].name);
+        (&mut self.funcs[self.cur].func)();
         self.cur = (self.cur + 1) % self.funcs.len();
         self.cur == 0
     }
@@ -38,15 +38,16 @@ impl<'a> EventLoop<'a> {
 
 #[test]
 fn test() {
-    //use std::io::Write;
-    //use std::rc::Rc;
+    use std::io::Write;
+    use std::rc::Rc;
+    use std::cell::RefCell;
 
     let mut event_loop = EventLoop::new();
-    //let mut result = Rc::new(Vec::new());
+    let result = Rc::new(RefCell::new(Vec::new()));
     event_loop.push(Box::new(|| {
-            println!("Been there, done that");
-        }), "functionn"
+            writeln!(*result.borrow_mut(), "Been there, done that");
+        }), "handl"
     );
     event_loop.run();
-    //assert_eq!(result, b"Been there, done that");
+    assert_eq!(*result.borrow(), b"Been there, done that");
 }
