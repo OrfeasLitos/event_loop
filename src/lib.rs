@@ -41,21 +41,3 @@ pub mod event_loop {
         }
     }
 }
-
-#[test]
-fn test() {
-    use std::io::Write;
-    use std::rc::Rc;
-    use std::cell::RefCell;
-
-    use self::event_loop::EventLoop;
-
-    let result /*: Rc<RefCell<Vec<u8>>>*/ = Rc::new(RefCell::new(Vec::new()));
-    let mut event_loop = EventLoop::new();
-    event_loop.push(Box::new(|| {
-            writeln!(*result.borrow_mut(), "Been there, done that");
-        }), "handl"
-    );
-    event_loop.run();
-    assert_eq!(*result.borrow(), b"Been there, done that");
-}
