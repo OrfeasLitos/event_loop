@@ -1,20 +1,16 @@
-pub enum Holder<T> where T: FnMut() -> () {
-    Func(Vec<(Box<T>, u8)>),
-    Elem(Vec<u8>),
+struct MyList<T> where T: FnMut() -> () {
+    arr: Vec<Holder<T>>
+}
+
+enum Holder<T> where T: FnMut() -> () {
+    Func(Box<T>, u8),
+    Elem(u8),
 }
 
 impl<T> Holder<T> where T: FnMut() -> () {
-    fn run(&mut self, index : usize) {
-        use std::ops::IndexMut;
-
-        if let Holder::Func(vec) = self {
-            (vec.index_mut(index).0)();
-        }
-    }
-
-    pub fn bump(&mut self, index : usize) {
-        if let Holder::Elem(vec) = self {
-            vec[index] += 1;
+    fn run(&mut self) {
+        if let Holder::Func(func, handle) = self {
+            (func)();
         }
     }
 }
@@ -24,33 +20,37 @@ fn static_test() {
     use std::io::Write;
 
     let mut buffer = Vec::new();
-    let input = vec![(Box::new(|| {
-        writeln!(&mut buffer, "douleyei!")
-        .expect("Buffer unwritable");
-    }), 42)];
-    let mut holder = Holder::Func(input);
-    holder.run(0);
-    println!("{}", match holder {
-        Holder::Elem(vec) => vec[0].to_string(),
-        Holder::Func(_vec) => String::from_utf8(buffer)
-                              .expect("Invalid buffer"),
+    let mut arr = MyList {
+        arr: vec![Holder::Func(Box::new(|| {
+            write!(&mut buffer, "douleyei!")
+            .expect("Buffer unwritable");
+        }), 42)]
+    };
+    arr.arr[0].run();
+    println!("{}", match &arr.arr[0] {
+        Holder::Elem(elem) => elem.to_string(),
+        Holder::Func(func, handle) =>
+            String::from_utf8(buffer.clone())
+                    .expect("Invalid buffer"),
     });
+    assert_eq!(buffer, b"douleyei!");
 }
 
-//    #[test]
-//    fn dynamic_test() {
-//        use std::io::Write;
-//        use std::rc::Rc;
-//        use std::cell::RefCell;
+//#[test]
+//fn dynamic_test() {
+//    use std::io::Write;
+//    use std::rc::Rc;
+//    use std::cell::RefCell;
 //
-//        use super::event_loop::EventLoop;
+//    extern crate event_loop;
+//    use event_loop::EventLoop;
 //
-//        let result /*: Rc<RefCell<Vec<u8>>>*/ = Rc::new(RefCell::new(Vec::new()));
-//        let mut event_loop = EventLoop::new();
-//        event_loop.push(Box::new(|| {
-//                writeln!(*result.borrow_mut(), "Been there, done that");
-//            }), "handl"
-//        );
-//        event_loop.run();
-//        assert_eq!(*result.borrow(), b"Been there, done that");
-//    }
+//    let mut result = Vec::new();
+//    let mut event_loop = EventLoop::new();
+//    event_loop.push(Box::new(|| {
+//            write!(&mut result, "Been there, done that");
+//        }), 42
+//    );
+//    event_loop.run();
+//    assert_eq!(result, b"Been there, done that");
+//}
