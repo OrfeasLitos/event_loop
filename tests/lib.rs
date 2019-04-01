@@ -1,56 +1,27 @@
-struct MyList<T> where T: FnMut() -> () {
-    arr: Vec<Holder<T>>
-}
-
-enum Holder<T> where T: FnMut() -> () {
-    Func(Box<T>, u8),
-    Elem(u8),
-}
-
-impl<T> Holder<T> where T: FnMut() -> () {
-    fn run(&mut self) {
-        if let Holder::Func(func, handle) = self {
-            (func)();
-        }
-    }
-}
+extern crate event_loop;
+use event_loop::EventLoop;
 
 #[test]
-fn static_test() {
+fn dynamic_test() {
     use std::io::Write;
 
-    let mut buffer = Vec::new();
-    let mut arr = MyList {
-        arr: vec![Holder::Func(Box::new(|| {
-            write!(&mut buffer, "douleyei!")
-            .expect("Buffer unwritable");
-        }), 42)]
-    };
-    arr.arr[0].run();
-    println!("{}", match &arr.arr[0] {
-        Holder::Elem(elem) => elem.to_string(),
-        Holder::Func(func, handle) =>
-            String::from_utf8(buffer.clone())
-                    .expect("Invalid buffer"),
-    });
-    assert_eq!(buffer, b"douleyei!");
-}
+    let mut buffer1 = Vec::new();
+    let mut buffer2 = Vec::new();
+    let mut events = EventLoop::new();
 
-//#[test]
-//fn dynamic_test() {
-//    use std::io::Write;
-//    use std::rc::Rc;
-//    use std::cell::RefCell;
-//
-//    extern crate event_loop;
-//    use event_loop::EventLoop;
-//
-//    let mut result = Vec::new();
-//    let mut event_loop = EventLoop::new();
-//    event_loop.push(Box::new(|| {
-//            write!(&mut result, "Been there, done that");
-//        }), 42
-//    );
-//    event_loop.run();
-//    assert_eq!(result, b"Been there, done that");
-//}
+    events.push(Box::new(|| {
+            write!(&mut buffer1, "Things have happened...")
+            .expect("Could not write to buffer1");
+        }), 42
+    );
+    events.push(Box::new(|| {
+            write!(&mut buffer2, "Been there, done that")
+            .expect("Could not write to buffer2");
+        }), 42
+    );
+
+    events.run();
+
+    assert_eq!(buffer1, b"Things have happened...");
+    assert_eq!(buffer2, b"Been there, done that");
+}
