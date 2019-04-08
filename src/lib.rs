@@ -1,16 +1,16 @@
 //! A crate that manages an event loop
 
-pub struct FuncBox<T> where T: FnMut() -> () {
-    pub func: Box<T>,
+pub struct FuncBox<'a> {
+    pub func: Box<dyn FnMut() + 'a>,
     pub handle: u8,
 }
 
-pub struct EventLoop<T> where T: FnMut() -> () {
-    funcs: Vec<FuncBox<T>>,
+pub struct EventLoop<'a> {
+    funcs: Vec<FuncBox<'a>>,
     cur: usize
 }
 
-impl<T> FuncBox<T> where T: FnMut() -> () {
+impl<'a> FuncBox<'a> {
     fn run(&mut self) {
         (self.func)();
     }
@@ -21,26 +21,27 @@ fn runs() {
     use std::io::Write;
 
     let mut buffer = Vec::new();
-    let mut test_box = FuncBox { func: Box::new(|| {
-        write!(&mut buffer, "Working great!")
-        .expect("Could not write to buffer");
-    }), handle: 42 };
+    {
+        let mut test_box = FuncBox { func: Box::new(|| {
+            write!(&mut buffer, "Working great!")
+            .expect("Could not write to buffer");
+        }), handle: 42 };
 
-    test_box.run();
+        test_box.run();
+    }
 
-    assert_eq!(test_box.handle, 42);
     assert_eq!(buffer, b"Working great!");
 }
 
-impl<T> EventLoop<T> where T: FnMut() -> () {
-    pub fn new() -> EventLoop<T> {
+impl<'a> EventLoop<'a> {
+    pub fn new() -> EventLoop<'a> {
         EventLoop {
             funcs: Vec::new(),
             cur: 0
         }
     }
 
-    pub fn push(&mut self, func: Box<T>, handle: u8) {
+    pub fn push(&mut self, func: Box<dyn FnMut()>, handle: u8) {
         self.funcs.push(FuncBox{ func, handle });
     }
 
