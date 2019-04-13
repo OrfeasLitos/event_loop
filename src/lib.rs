@@ -19,29 +19,26 @@ impl<'a> FuncBox<'a> {
 #[test]
 fn runs() {
     use std::io::Write;
-    use std::mem::drop;
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
-    let mut buffer = Vec::new();
-    {
-        let mut test_box = FuncBox { func: Box::new(|| {
-            write!(&mut buffer, "A")
-            .expect("Could not write to buffer");
-        }), handle: 42 };
+    let buffer = Rc::new(RefCell::new(Vec::new()));
+    let mut test_box = FuncBox { func: Box::new(|| {
+        write!(buffer.borrow_mut(), "A")
+        .expect("Could not write to buffer");
+    }), handle: 42 };
 
-        test_box.run();
+    test_box.run();
 
-        drop(test_box);
+    test_box = FuncBox { func: Box::new(|| {
+        write!(buffer.borrow_mut(), "B")
+        .expect("Could not write to buffer");
+    }), handle: 42 };
 
-        test_box = FuncBox { func: Box::new(|| {
-            write!(&mut buffer, "B")
-            .expect("Could not write to buffer");
-        }), handle: 42 };
+    test_box.run();
 
-        test_box.run();
-    }
-
-    assert_eq!(buffer[0], b'A');
-    assert_eq!(buffer[1], b'B');
+    assert_eq!(buffer.borrow()[0], b'A');
+    assert_eq!(buffer.borrow()[1], b'B');
 }
 
 impl<'a> EventLoop<'a> {
@@ -52,7 +49,7 @@ impl<'a> EventLoop<'a> {
         }
     }
 
-    pub fn push(&mut self, func: Box<dyn FnMut()>, handle: u8) {
+    pub fn push(&mut self, func: Box<dyn FnMut() + 'a>, handle: u8) {
         self.funcs.push(FuncBox{ func, handle });
     }
 
